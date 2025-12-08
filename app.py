@@ -256,7 +256,7 @@ if st.button("Prediksi Tingkat Obesitas"):
         st.dataframe(proba_df, use_container_width=True)
 
     st.info(
-        "Model ini digunakan untuk kebutuhan edukasi dan eksperimen. "
-        "Analisa saran dan resiko menggunakan Gemini AI. Gemini dapat melakukan kesalahan."
-        "Untuk keputusan medis/klinis, tetap konsultasikan dengan tenaga kesehatan profesional."
+        "Model ini digunakan untuk kebutuhan edukasi dan eksperimen. \n"
+        "Analisa saran dan resiko menggunakan Gemini AI. Gemini dapat melakukan kesalahan. \n"
+        "Untuk keputusan medis/klinis, tetap konsultasikan dengan tenaga kesehatan profesional. \n"
     )
