@@ -8,10 +8,6 @@ import pickle
 
 @st.cache_resource
 def load_model(path: str = "modelKNN_fixed-3.pkl"):
-    """
-    Load model dari file .pkl.
-    - Di notebook kamu: disimpan sebagai dict {"model": pipeline, "feature_columns": [...]}
-    """
     try:
         with open(path, "rb") as f:
             obj = pickle.load(f)
@@ -87,21 +83,19 @@ def build_input_row(
 
     df = pd.DataFrame(data)
 
-    # Kalau kamu simpan feature_columns di .pkl, kita align urutan kolomnya
+    # align urutan kolomnya
     if feature_cols is not None:
         df = df[feature_cols]
 
     return df
 
 
-# =====================================================
 # 3. Streamlit UI
-# =====================================================
 
 st.set_page_config(page_title="Obesity Classification (KNN)", layout="centered")
 
 st.title("Klasifikasi Tingkat Obesitas")
-st.caption("Model KNN + preprocessing (ColumnTransformer) dari notebook.")
+st.caption("Menggunakan Model KNN + preprocessing (ColumnTransformer).")
 
 st.success("Model pipeline berhasil di-load dari `modelKNN_fixed.pkl`.")
 
@@ -253,7 +247,7 @@ if st.button("Prediksi Tingkat Obesitas"):
         proba = model.predict_proba(row)[0]
 
     st.subheader("Hasil Prediksi")
-    st.write(f"**Kelas NObeyesdad (prediksi):** `{y_pred}`")
+    st.write(f"**Anda masuk dalam kategori:** `{y_pred}`")
 
     if proba is not None:
         proba_df = pd.DataFrame(
@@ -263,5 +257,6 @@ if st.button("Prediksi Tingkat Obesitas"):
 
     st.info(
         "Model ini digunakan untuk kebutuhan edukasi dan eksperimen. "
+        "Analisa saran dan resiko menggunakan Gemini AI. Gemini dapat melakukan kesalahan."
         "Untuk keputusan medis/klinis, tetap konsultasikan dengan tenaga kesehatan profesional."
     )
