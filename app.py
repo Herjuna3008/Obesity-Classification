@@ -7,7 +7,7 @@ import pickle
 # =====================================================
 
 @st.cache_resource
-def load_model(path: str = "modelKNN_fixed.pkl"):
+def load_model(path: str = "modelKNN_fixed-3.pkl"):
     """
     Load model dari file .pkl.
     Diasumsikan .pkl berisi:
