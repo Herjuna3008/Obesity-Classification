@@ -7,16 +7,24 @@ import pickle
 # =====================================================
 
 @st.cache_resource
-def load_model(path: str = "modelKNN_fixed-3.pkl"):
+def load_model(path: str = "modelKNN_fixed.pkl"):
     """
     Load model dari file .pkl.
-    Diasumsikan .pkl berisi:
-      - dict {"model": pipeline, "feature_columns": [...]}  (sesuai di notebook)
-        atau
-      - langsung objek pipeline sklearn
+    - Di notebook kamu: disimpan sebagai dict {"model": pipeline, "feature_columns": [...]}
     """
-    with open(path, "rb") as f:
-        obj = pickle.load(f)
+    try:
+        with open(path, "rb") as f:
+            obj = pickle.load(f)
+    except Exception as e:
+        # Biar kalau error kelihatan jelas di UI Streamlit
+        st.error(
+            f"Gagal load model dari '{path}'.\n\n"
+            f"Jenis error: {type(e).__name__}\n"
+            "Ini biasanya terjadi kalau:\n"
+            "- Versi scikit-learn di Colab beda dengan di Streamlit, atau\n"
+            "- Library yang dipakai saat training belum di-install di environment deploy."
+        )
+        raise
 
     if isinstance(obj, dict):
         model = obj.get("model", obj)
@@ -31,8 +39,7 @@ def load_model(path: str = "modelKNN_fixed-3.pkl"):
 model, feature_cols = load_model()
 
 # =====================================================
-# 2. Fungsi bantu buat 1 baris input mentah
-#    (kolom sama dengan X di notebook: sebelum preprocessing)
+# 2. Fungsi: bangun 1 baris input mentah (SAMA seperti X di notebook)
 # =====================================================
 
 def build_input_row(
@@ -54,10 +61,10 @@ def build_input_row(
     mtrans: str,
 ) -> pd.DataFrame:
     """
-    Bentuk DataFrame 1 baris dengan struktur yang sama
-    seperti dataset asli (tanpa NObeyesdad).
-    Preprocessing (scaling + one-hot) akan dikerjakan
-    oleh pipeline yang ada di dalam model.
+    Struktur kolom HARUS sama seperti X di notebook:
+    ['Gender', 'Age', 'Height', 'Weight', 'family_history_with_overweight',
+     'FAVC', 'FCVC', 'NCP', 'CAEC', 'SMOKE', 'CH2O', 'SCC', 'FAF', 'TUE',
+     'CALC', 'MTRANS']
     """
     data = {
         "Gender": [gender],
@@ -80,7 +87,7 @@ def build_input_row(
 
     df = pd.DataFrame(data)
 
-    # Kalau di .pkl kamu simpan feature_columns, urutkan kolomnya
+    # Kalau kamu simpan feature_columns di .pkl, kita align urutan kolomnya
     if feature_cols is not None:
         df = df[feature_cols]
 
@@ -205,7 +212,7 @@ with col2:
         ["Automobile", "Motorbike", "Bike", "Public Transportation", "Walking"],
     )
 
-# mapping label ke nilai asli di dataset (Public_Transportation)
+# mapping label ke nilai di dataset
 mtrans_map = {
     "Automobile": "Automobile",
     "Motorbike": "Motorbike",
