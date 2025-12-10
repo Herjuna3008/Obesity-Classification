@@ -1,6 +1,7 @@
 import streamlit as st
 import pandas as pd
 import pickle
+import google.generativeai as genai
 
 # =====================================================
 # 1. Load model pipeline (preprocess + KNN) dari .pkl
@@ -89,7 +90,44 @@ def build_input_row(
 
     return df
 
+# =============================
+# Gen AI
+# =============================
 
+api_key = st.sidebar.text_input("AIzaSyAcTjDlTjugWpBCO-K1hQvgCk-429r4llU", type="password")
+def get_gemini_advice(api_key, prediction, user_data, bmi):
+    """Mengirim data ke Gemini untuk dianalisa"""
+    try:
+        genai.configure(api_key=api_key)
+        model_ai = genai.GenerativeModel('gemini-pro')
+        
+        # Prompt yang dikirim ke AI
+        prompt = f"""
+        Kamu adalah seorang Dokter Spesialis Gizi dan Kesehatan.
+        
+        Analisa profil pasien berikut:
+        - **Diagnosa AI (KNN):** {prediction}
+        - **BMI:** {bmi:.2f}
+        - **Usia:** {user_data['Age']} tahun, {user_data['Gender']}
+        - **Kebiasaan:**
+            - Aktivitas Fisik: {user_data['FAF']} (Skala 0-3)
+            - Makan Sayur: {user_data['FCVC']} (Skala 1-3)
+            - Minum Air: {user_data['CH2O']} Liter
+            - Merokok: {user_data['SMOKE']}
+            - Riwayat Keluarga: {user_data['family_history_with_overweight']}
+        
+        Tugasmu:
+        1. Jelaskan secara singkat **RISIKO KESEHATAN** utama jika kondisi ini berlanjut (maksimal 2 poin).
+        2. Berikan 3 **REKOMENDASI MEDIS** yang spesifik, ramah, dan bisa langsung dipraktekkan berdasarkan data kebiasaan di atas (contoh: jika minum air kurang, sarankan target minum).
+        
+        Gunakan Bahasa Indonesia yang profesional namun mudah dimengerti. Jangan gunakan markdown bold berlebihan.
+        """
+        
+        response = model_ai.generate_content(prompt)
+        return response.text
+    except Exception as e:
+        return f"Gagal menghubungi Gemini: {e}"
+        
 # 3. Streamlit UI
 
 st.set_page_config(page_title="Obesity Classification (KNN)", layout="centered")
@@ -255,6 +293,28 @@ if st.button("Prediksi Tingkat Obesitas"):
         )
         st.dataframe(proba_df, use_container_width=True)
 
+    if not api_key:
+            st.info("💡 Masukkan **Gemini API Key** di sidebar kiri untuk mendapatkan saran kesehatan mendalam.")
+        else:
+            with st.spinner("Gemini AI sedang menganalisa data medis Anda..."):
+                # Siapkan data dictionary yang lebih human-readable untuk dikirim ke Gemini
+                user_data_ai = {
+                    'Age': age,
+                    'Gender': gender_txt,
+                    'FAF': faf,
+                    'FCVC': fcvc,
+                    'CH2O': ch2o,
+                    'SMOKE': smoke_txt,
+                    'family_history_with_overweight': family_hist_txt
+                }
+                # Sistem hitung BMI untuk info tambahan
+                bmi_val = weight / (height ** 2)
+                analysis = get_gemini_advice(api_key, prediction, user_data_ai, bmi_val)
+                
+                # Tampilkan output Gemini dalam container rapi
+                with st.chat_message("assistant"):
+                    st.write(analysis)
+    
     st.info(
         "Model ini digunakan untuk kebutuhan edukasi dan eksperimen. \n"
         "Analisa saran dan resiko menggunakan Gemini AI. Gemini dapat melakukan kesalahan. \n"
