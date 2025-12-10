@@ -70,6 +70,8 @@ def get_gemini_advice(api_key, prediction, user_data, bmi):
     """Mengirim data ke Gemini untuk dianalisa"""
     try:
         genai.configure(api_key=api_key)
+        for m in genai.list_models():
+        print(m)
         model_ai = genai.GenerativeModel('gemini-1.5-flash')
         
         # Prompt yang dikirim ke AI
