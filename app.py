@@ -70,7 +70,7 @@ def get_gemini_advice(api_key, prediction, user_data, bmi):
     """Mengirim data ke Gemini untuk dianalisa"""
     try:
         genai.configure(api_key=api_key)
-        model_ai = genai.generate_content('gemini-3-pro-preview')
+        model_ai = genai.GenerativeModel('gemini-pro')
         
         # Prompt yang dikirim ke AI
         prompt = f"""
@@ -106,6 +106,16 @@ def get_gemini_advice(api_key, prediction, user_data, bmi):
 st.set_page_config(page_title="Obesity Classification (KNN)", layout="centered")
 
 api_key = st.secrets["API_KEY"]
+
+print("Mencari model yang tersedia...")
+try:
+    for m in genai.list_models():
+        # Kita hanya cari model yang bisa generate text (generateContent)
+        if 'generateContent' in m.supported_generation_methods:
+            print(f"- {m.name}")
+            
+except Exception as e:
+    print(f"Error: {e}")
 
 st.title("Klasifikasi Tingkat Obesitas")
 st.caption("Menggunakan Model KNN")
