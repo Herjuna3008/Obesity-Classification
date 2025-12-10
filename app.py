@@ -13,16 +13,14 @@ def load_model(path: str = "modelKNN_fixed-3.pkl"):
         with open(path, "rb") as f:
             obj = pickle.load(f)
     except Exception as e:
-        # Biar kalau error kelihatan jelas di UI Streamlit
         st.error(
             f"Gagal load model dari '{path}'.\n\n"
             f"Jenis error: {type(e).__name__}\n"
-            "Ini biasanya terjadi kalau:\n"
-            "- Versi scikit-learn di Colab beda dengan di Streamlit, atau\n"
-            "- Library yang dipakai saat training belum di-install di environment deploy."
+            "Pastikan file .pkl ada di folder yang sama dan nama filenya benar."
         )
-        raise
+        return None, None
 
+    # Handle jika yang disimpan adalah dict atau object langsung
     if isinstance(obj, dict):
         model = obj.get("model", obj)
         feature_columns = obj.get("feature_columns", None)
@@ -32,37 +30,14 @@ def load_model(path: str = "modelKNN_fixed-3.pkl"):
 
     return model, feature_columns
 
-
+# Load Model
 model, feature_cols = load_model()
 
 # =====================================================
-# 2. Fungsi: bangun 1 baris input mentah (SAMA seperti X di notebook)
+# 2. Fungsi: bangun 1 baris input mentah
 # =====================================================
 
-def build_input_row(
-    gender: str,
-    age: float,
-    height: float,
-    weight: float,
-    fam_hist: str,
-    favc: str,
-    fcvc: float,
-    ncp: float,
-    caec: str,
-    smoke: str,
-    ch2o: float,
-    scc: str,
-    faf: float,
-    tue: float,
-    calc: str,
-    mtrans: str,
-) -> pd.DataFrame:
-    """
-    Struktur kolom HARUS sama seperti X di notebook:
-    ['Gender', 'Age', 'Height', 'Weight', 'family_history_with_overweight',
-     'FAVC', 'FCVC', 'NCP', 'CAEC', 'SMOKE', 'CH2O', 'SCC', 'FAF', 'TUE',
-     'CALC', 'MTRANS']
-    """
+def build_input_row(gender, age, height, weight, fam_hist, favc, fcvc, ncp, caec, smoke, ch2o, scc, faf, tue, calc, mtrans):
     data = {
         "Gender": [gender],
         "Age": [age],
@@ -81,20 +56,16 @@ def build_input_row(
         "CALC": [calc],
         "MTRANS": [mtrans],
     }
-
     df = pd.DataFrame(data)
-
-    # align urutan kolomnya
+    # align urutan kolomnya jika ada info feature columns
     if feature_cols is not None:
         df = df[feature_cols]
-
     return df
 
 # =============================
-# Gen AI
+# 3. Fungsi Gen AI (Gemini)
 # =============================
 
-api_key = st.sidebar.text_input("AIzaSyAcTjDlTjugWpBCO-K1hQvgCk-429r4llU", type="password")
 def get_gemini_advice(api_key, prediction, user_data, bmi):
     """Mengirim data ke Gemini untuk dianalisa"""
     try:
@@ -118,24 +89,31 @@ def get_gemini_advice(api_key, prediction, user_data, bmi):
         
         Tugasmu:
         1. Jelaskan secara singkat **RISIKO KESEHATAN** utama jika kondisi ini berlanjut (maksimal 2 poin).
-        2. Berikan 3 **REKOMENDASI MEDIS** yang spesifik, ramah, dan bisa langsung dipraktekkan berdasarkan data kebiasaan di atas (contoh: jika minum air kurang, sarankan target minum).
+        2. Berikan 3 **REKOMENDASI MEDIS** yang spesifik, ramah, dan bisa langsung dipraktekkan berdasarkan data kebiasaan di atas.
         
-        Gunakan Bahasa Indonesia yang profesional namun mudah dimengerti. Jangan gunakan markdown bold berlebihan.
+        Gunakan Bahasa Indonesia yang profesional namun mudah dimengerti.
         """
         
         response = model_ai.generate_content(prompt)
         return response.text
     except Exception as e:
         return f"Gagal menghubungi Gemini: {e}"
-        
-# 3. Streamlit UI
+
+# =============================
+# 4. Streamlit UI
+# =============================
 
 st.set_page_config(page_title="Obesity Classification (KNN)", layout="centered")
 
-st.title("Klasifikasi Tingkat Obesitas")
-st.caption("Menggunakan Model KNN + preprocessing (ColumnTransformer).")
+api_key = st.secrets["API_KEY"]
 
-st.success("Model pipeline berhasil di-load dari `modelKNN_fixed.pkl`.")
+st.title("Klasifikasi Tingkat Obesitas")
+st.caption("Menggunakan Model KNN")
+
+if model:
+    st.success("Model berhasil di-load.")
+else:
+    st.stop() # Berhenti jika model gagal load
 
 st.markdown("### Masukkan Data Responden")
 
@@ -143,180 +121,80 @@ col1, col2 = st.columns(2)
 
 with col1:
     gender = st.selectbox("Gender", ["Female", "Male"])
-
-    age = st.number_input(
-        "Age (tahun)",
-        min_value=10.0,
-        max_value=100.0,
-        value=25.0,
-        step=1.0,
-    )
-
-    height = st.number_input(
-        "Height (meter)",
-        min_value=1.2,
-        max_value=2.2,
-        value=1.70,
-        step=0.01,
-    )
-
-    weight = st.number_input(
-        "Weight (kg)",
-        min_value=30.0,
-        max_value=200.0,
-        value=70.0,
-        step=0.5,
-    )
-
-    fam_hist = st.selectbox(
-        "Family history with overweight",
-        ["yes", "no"],
-    )
-
-    favc = st.selectbox(
-        "Frequent consumption of high caloric food (FAVC)",
-        ["yes", "no"],
-    )
-
-    smoke = st.selectbox(
-        "Do you smoke? (SMOKE)",
-        ["yes", "no"],
-    )
-
-    scc = st.selectbox(
-        "Do you monitor the calories you eat daily? (SCC)",
-        ["yes", "no"],
-    )
+    age = st.number_input("Age (tahun)", 10.0, 100.0, 25.0, 1.0)
+    height = st.number_input("Height (meter)", 1.2, 2.2, 1.70, 0.01)
+    weight = st.number_input("Weight (kg)", 30.0, 200.0, 70.0, 0.5)
+    fam_hist = st.selectbox("Family history with overweight", ["yes", "no"])
+    favc = st.selectbox("Frequent consumption of high caloric food (FAVC)", ["yes", "no"])
+    smoke = st.selectbox("Do you smoke? (SMOKE)", ["yes", "no"])
+    scc = st.selectbox("Do you monitor the calories you eat daily? (SCC)", ["yes", "no"])
 
 with col2:
-    fcvc = st.slider(
-        "FCVC – Frequency of vegetables consumption (1–3)",
-        min_value=1.0,
-        max_value=3.0,
-        value=2.0,
-        step=0.5,
-    )
+    fcvc = st.slider("FCVC – Frequency of vegetables consumption", 1.0, 3.0, 2.0, 0.5)
+    ncp = st.slider("NCP – Number of main meals per day", 1.0, 4.0, 3.0, 1.0)
+    ch2o = st.slider("CH2O – Water intake (Liters)", 1.0, 3.0, 2.0, 1.0)
+    faf = st.slider("FAF – Physical activity frequency", 0.0, 3.0, 2.0, 1.0)
+    tue = st.slider("TUE – Time using technology devices", 0.0, 2.0, 1.0, 1.0)
+    caec = st.selectbox("CAEC – Eat food between meals?", ["no", "Sometimes", "Frequently", "Always"])
+    calc = st.selectbox("CALC – Alcohol consumption?", ["no", "Sometimes", "Frequently", "Always"])
+    mtrans_label = st.selectbox("MTRANS – Transportation?", ["Automobile", "Motorbike", "Bike", "Public Transportation", "Walking"])
 
-    ncp = st.slider(
-        "NCP – Number of main meals per day (1–4)",
-        min_value=1.0,
-        max_value=4.0,
-        value=3.0,
-        step=1.0,
-    )
-
-    ch2o = st.slider(
-        "CH2O – Water intake (1–3)",
-        min_value=1.0,
-        max_value=3.0,
-        value=2.0,
-        step=1.0,
-    )
-
-    faf = st.slider(
-        "FAF – Physical activity (0–4)",
-        min_value=0.0,
-        max_value=4.0,
-        value=2.0,
-        step=1.0,
-    )
-
-    tue = st.slider(
-        "TUE – Time using technology devices (0–3)",
-        min_value=0.0,
-        max_value=3.0,
-        value=1.0,
-        step=1.0,
-    )
-
-    caec = st.selectbox(
-        "CAEC – Do you eat any food between meals?",
-        ["no", "Sometimes", "Frequently", "Always"],
-    )
-
-    calc = st.selectbox(
-        "CALC – How often do you drink alcohol?",
-        ["no", "Sometimes", "Frequently", "Always"],
-    )
-
-    mtrans_label = st.selectbox(
-        "MTRANS – Which transportation do you usually use?",
-        ["Automobile", "Motorbike", "Bike", "Public Transportation", "Walking"],
-    )
-
-# mapping label ke nilai di dataset
+# Mapping Transportation
 mtrans_map = {
-    "Automobile": "Automobile",
-    "Motorbike": "Motorbike",
-    "Bike": "Bike",
-    "Public Transportation": "Public_Transportation",
-    "Walking": "Walking",
+    "Automobile": "Automobile", "Motorbike": "Motorbike", "Bike": "Bike",
+    "Public Transportation": "Public_Transportation", "Walking": "Walking"
 }
 mtrans = mtrans_map[mtrans_label]
 
 st.markdown("---")
 
 if st.button("Prediksi Tingkat Obesitas"):
-    # 1. Bentuk 1 baris DataFrame mentah (seperti X di notebook)
-    row = build_input_row(
-        gender=gender,
-        age=age,
-        height=height,
-        weight=weight,
-        fam_hist=fam_hist,
-        favc=favc,
-        fcvc=fcvc,
-        ncp=ncp,
-        caec=caec,
-        smoke=smoke,
-        ch2o=ch2o,
-        scc=scc,
-        faf=faf,
-        tue=tue,
-        calc=calc,
-        mtrans=mtrans,
-    )
+    # 1. Bentuk Data Input
+    row = build_input_row(gender, age, height, weight, fam_hist, favc, fcvc, ncp, caec, smoke, ch2o, scc, faf, tue, calc, mtrans)
 
-    # 2. Prediksi pakai pipeline (preprocess + KNN)
+    # 2. Prediksi Model KNN
     y_pred = model.predict(row)[0]
-
+    
+    # Cek Probabilitas (Opsional)
     proba = None
     if hasattr(model, "predict_proba"):
         proba = model.predict_proba(row)[0]
 
+    # 3. Tampilkan Hasil Prediksi
     st.subheader("Hasil Prediksi")
     st.write(f"**Anda masuk dalam kategori:** `{y_pred}`")
 
     if proba is not None:
-        proba_df = pd.DataFrame(
-            {"Class": model.classes_, "Probability": proba}
-        )
-        st.dataframe(proba_df, use_container_width=True)
+        with st.expander("Lihat Detail Probabilitas"):
+            proba_df = pd.DataFrame({"Class": model.classes_, "Probability": proba})
+            st.dataframe(proba_df, use_container_width=True)
+
+    # 4. Integrasi Gemini AI (Perbaikan Indentasi & Variabel)
+    st.markdown("---")
+    st.subheader("Analisa Singkat dari Gemini AI")
 
     if not api_key:
-            st.info("💡 Masukkan **Gemini API Key** di sidebar kiri untuk mendapatkan saran kesehatan mendalam.")
-        else:
-            with st.spinner("Gemini AI sedang menganalisa data medis Anda..."):
-                # Siapkan data dictionary yang lebih human-readable untuk dikirim ke Gemini
-                user_data_ai = {
-                    'Age': age,
-                    'Gender': gender_txt,
-                    'FAF': faf,
-                    'FCVC': fcvc,
-                    'CH2O': ch2o,
-                    'SMOKE': smoke_txt,
-                    'family_history_with_overweight': family_hist_txt
-                }
-                # Sistem hitung BMI untuk info tambahan
-                bmi_val = weight / (height ** 2)
-                analysis = get_gemini_advice(api_key, prediction, user_data_ai, bmi_val)
-                
-                # Tampilkan output Gemini dalam container rapi
-                with st.chat_message("assistant"):
-                    st.write(analysis)
-    
-    st.info(
-        "Model ini digunakan untuk kebutuhan edukasi dan eksperimen. \n"
-        "Analisa saran dan resiko menggunakan Gemini AI. Gemini dapat melakukan kesalahan. \n"
-        "Untuk keputusan medis/klinis, tetap konsultasikan dengan tenaga kesehatan profesional. \n"
-    )
+        st.warning("⚠️ Error API_KEY ga kebaca")
+    else:
+        with st.spinner("Gemini AI sedang menganalisa data medis Anda..."):
+            # Hitung BMI untuk info ke AI
+            bmi_val = weight / (height ** 2)
+            user_data_ai = {
+                'Age': age,
+                'Gender': gender,           
+                'FAF': faf,
+                'FCVC': fcvc,
+                'CH2O': ch2o,
+                'SMOKE': smoke,             
+                'family_history_with_overweight': fam_hist
+            }
+            
+            # Panggil fungsi Gemini (Gunakan y_pred sebagai hasil prediksi)
+            analysis = get_gemini_advice(api_key, y_pred, user_data_ai, bmi_val)
+            
+            # Tampilkan Output
+            st.markdown(analysis)
+st.info(
+    "Catatan: Model ini hanya untuk edukasi. Analisa AI dapat mungkin dapat melakukan kesalahan. "
+    "Konsultasikan dengan dokter untuk diagnosa medis."
+)
