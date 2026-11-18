@@ -8,7 +8,7 @@
 
 Aplikasi web berbasis **Streamlit** untuk memperkirakan **tingkat obesitas** seseorang dari data fisik dan kebiasaan sehari-hari. Prediksi dilakukan oleh model **K-Nearest Neighbors (KNN)**, lalu hasilnya dianalisis oleh **Google Gemini** untuk memberikan gambaran risiko kesehatan dan rekomendasi gaya hidup dalam Bahasa Indonesia.
 
-## 🚀 Coba Aplikasinya check
+## 🚀 Coba Aplikasinya 
 
 👉 **[obesity-classification-yp42tfpuzzbpf352cidgaa.streamlit.app](https://obesity-classification-yp42tfpuzzbpf352cidgaa.streamlit.app)**
 
